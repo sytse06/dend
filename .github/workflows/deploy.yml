@@ -1,0 +1,19 @@
+name: Deploy to Hugging Face Space
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Push to Hugging Face Space
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git remote add hf-space https://${{ secrets.HF_TOKEN }}@huggingface.co/spaces/sytse06/dend.git
+          git push hf-space main --force
