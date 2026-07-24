@@ -16,7 +16,7 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.HF_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan hf.co >> ~/.ssh/known_hosts
+          echo "hf.co ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAINJjhgtT9FOQrsVSarIoPVI1jFMh3VSHdKfdqp/O776s" >> ~/.ssh/known_hosts
 
       - name: Push to Hugging Face Space
         run: |
