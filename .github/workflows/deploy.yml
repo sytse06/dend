@@ -12,8 +12,9 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Push to Hugging Face Space
-        run: |
-          git config --global user.name "GitHub Actions"
-          git config --global user.email "actions@github.com"
-          git remote add hf-space https://${{ secrets.HF_TOKEN }}@huggingface.co/spaces/sytse06/dend.git
-          git push hf-space main --force
+        uses: huggingface/hub-action@v1
+        with:
+          hf_token: ${{ secrets.HF_TOKEN }}
+          repo_id: sytse06/dend
+          repo_type: space
+          commit_message: "Update from GitHub Actions"
