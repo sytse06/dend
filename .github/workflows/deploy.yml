@@ -11,10 +11,16 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.HF_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan huggingface.co >> ~/.ssh/known_hosts
+
       - name: Push to Hugging Face Space
-        uses: huggingface/hub-action@v1
-        with:
-          hf_token: ${{ secrets.HF_TOKEN }}
-          repo_id: sytse06/dend
-          repo_type: space
-          commit_message: "Update from GitHub Actions"
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@github.com"
+          git remote add hf-space git@hf.co:sytse06/dend
+          git push hf-space main --force
