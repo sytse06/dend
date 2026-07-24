@@ -16,11 +16,11 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.HF_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan huggingface.co >> ~/.ssh/known_hosts
+          ssh-keyscan hf.co >> ~/.ssh/known_hosts
 
       - name: Push to Hugging Face Space
         run: |
           git config --global user.name "GitHub Actions"
           git config --global user.email "actions@github.com"
-          git remote add hf-space git@hf.co:sytse06/dend
+          git remote add hf-space git@hf.co:spaces/sytse06/dend
           git push hf-space main --force
