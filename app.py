@@ -48,7 +48,7 @@ def roll_dice(dice_type: str) -> str:
         return f"Invalid dice: {dice_type}"
 
 
-def get_dm_response(message: str, history: list[tuple[str, str]]) -> str:
+def get_dm_response(message: str, history: list[dict]) -> str:
     """Get a response from the Mistral DM."""
     with logfire.span(
         "get_dm_response",
@@ -60,12 +60,8 @@ def get_dm_response(message: str, history: list[tuple[str, str]]) -> str:
             return "Error: Mistral API key not configured. Set MISTRAL_API_KEY environment variable."
 
         try:
-            # Build messages including system prompt and conversation history
-            messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-            for user_msg, assistant_msg in history:
-                messages.append({"role": "user", "content": user_msg})
-                messages.append({"role": "assistant", "content": assistant_msg})
-            messages.append({"role": "user", "content": message})
+            # Gradio's messages format already matches Mistral's role/content shape
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history, {"role": "user", "content": message}]
 
             # Get response from Mistral
             response = client.chat.complete(
@@ -81,10 +77,13 @@ def get_dm_response(message: str, history: list[tuple[str, str]]) -> str:
             return f"Error: Failed to get response from Mistral. {str(e)}"
 
 
-def respond(message: str, history: list[tuple[str, str]]) -> tuple[str, list[tuple[str, str]]]:
+def respond(message: str, history: list[dict]) -> tuple[str, list[dict]]:
     """Handle user message and return DM response."""
     response = get_dm_response(message, history)
-    return "", history + [(message, response)]
+    return "", history + [
+        {"role": "user", "content": message},
+        {"role": "assistant", "content": response},
+    ]
 
 
 # Create Gradio interface
