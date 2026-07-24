@@ -2,10 +2,22 @@ import os
 import random
 import gradio as gr
 import logfire
+import spaces
 from mistralai.client import Mistral
 
 logfire.configure(service_name="dnd-dm-assistant", send_to_logfire="if-token-present")
 logfire.instrument_httpx(capture_all=True)
+
+
+@spaces.GPU
+def _zerogpu_startup_check() -> None:
+    """No-op: this app does no local GPU work, but HF's ZeroGPU hardware
+    refuses to start a Space with zero @spaces.GPU functions. Called once
+    at import time only, never on the chat/dice request path."""
+    return None
+
+
+_zerogpu_startup_check()
 
 # Load Mistral API key from environment variable
 MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY")
