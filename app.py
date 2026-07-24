@@ -1,14 +1,13 @@
 import os
 import random
 import gradio as gr
-from mistralai.client import MistralClient
-from mistralai.models.chat_completion import ChatMessage
+from mistralai.client import Mistral
 
 # Load Mistral API key from environment variable
 MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY")
 
 # Initialize Mistral client only if API key is available
-client = MistralClient(api_key=MISTRAL_API_KEY) if MISTRAL_API_KEY else None
+client = Mistral(api_key=MISTRAL_API_KEY) if MISTRAL_API_KEY else None
 
 # System prompt for the D&D DM
 SYSTEM_PROMPT = """
@@ -40,15 +39,15 @@ def get_dm_response(message: str, history: list[tuple[str, str]]) -> str:
     
     try:
         # Build messages including system prompt and conversation history
-        messages = [ChatMessage(role="system", content=SYSTEM_PROMPT)]
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
         for user_msg, assistant_msg in history:
-            messages.append(ChatMessage(role="user", content=user_msg))
-            messages.append(ChatMessage(role="assistant", content=assistant_msg))
-        messages.append(ChatMessage(role="user", content=message))
-        
+            messages.append({"role": "user", "content": user_msg})
+            messages.append({"role": "assistant", "content": assistant_msg})
+        messages.append({"role": "user", "content": message})
+
         # Get response from Mistral
-        response = client.chat(
-            model="mistral-medium",
+        response = client.chat.complete(
+            model="mistral-medium-latest",
             messages=messages,
             temperature=0.7,
             max_tokens=150,
@@ -66,7 +65,7 @@ def respond(message: str, history: list[tuple[str, str]]) -> tuple[str, list[tup
 
 
 # Create Gradio interface
-with gr.Blocks(title="D&D Dungeon Master", theme=gr.themes.Soft()) as demo:
+with gr.Blocks(title="D&D Dungeon Master") as demo:
     gr.Markdown("# 🎲 D&D Dungeon Master Assistant")
     gr.Markdown("Play a text-based D&D adventure. The AI DM will guide your party through an epic story.")
     
@@ -97,7 +96,7 @@ with gr.Blocks(title="D&D Dungeon Master", theme=gr.themes.Soft()) as demo:
             dice_result = gr.Textbox(
                 label="Result",
                 interactive=False,
-                show_copy_button=True,
+                buttons=["copy"],
             )
     
     # Connect dice buttons
@@ -111,4 +110,4 @@ with gr.Blocks(title="D&D Dungeon Master", theme=gr.themes.Soft()) as demo:
 
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(theme=gr.themes.Soft())
