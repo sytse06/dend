@@ -1,7 +1,11 @@
 import os
 import random
 import gradio as gr
+import logfire
 from mistralai.client import Mistral
+
+logfire.configure(service_name="dnd-dm-assistant", send_to_logfire="if-token-present")
+logfire.instrument_httpx(capture_all=True)
 
 # Load Mistral API key from environment variable
 MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY")
@@ -34,28 +38,35 @@ def roll_dice(dice_type: str) -> str:
 
 def get_dm_response(message: str, history: list[tuple[str, str]]) -> str:
     """Get a response from the Mistral DM."""
-    if client is None:
-        return "Error: Mistral API key not configured. Set MISTRAL_API_KEY environment variable."
-    
-    try:
-        # Build messages including system prompt and conversation history
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}]
-        for user_msg, assistant_msg in history:
-            messages.append({"role": "user", "content": user_msg})
-            messages.append({"role": "assistant", "content": assistant_msg})
-        messages.append({"role": "user", "content": message})
+    with logfire.span(
+        "get_dm_response",
+        message_length=len(message),
+        history_turns=len(history),
+    ):
+        if client is None:
+            logfire.error("Mistral API key not configured")
+            return "Error: Mistral API key not configured. Set MISTRAL_API_KEY environment variable."
 
-        # Get response from Mistral
-        response = client.chat.complete(
-            model="mistral-medium-latest",
-            messages=messages,
-            temperature=0.7,
-            max_tokens=150,
-        )
-        
-        return response.choices[0].message.content
-    except Exception as e:
-        return f"Error: Failed to get response from Mistral. {str(e)}"
+        try:
+            # Build messages including system prompt and conversation history
+            messages = [{"role": "system", "content": SYSTEM_PROMPT}]
+            for user_msg, assistant_msg in history:
+                messages.append({"role": "user", "content": user_msg})
+                messages.append({"role": "assistant", "content": assistant_msg})
+            messages.append({"role": "user", "content": message})
+
+            # Get response from Mistral
+            response = client.chat.complete(
+                model="mistral-medium-latest",
+                messages=messages,
+                temperature=0.7,
+                max_tokens=150,
+            )
+
+            return response.choices[0].message.content
+        except Exception as e:
+            logfire.exception("Mistral request failed")
+            return f"Error: Failed to get response from Mistral. {str(e)}"
 
 
 def respond(message: str, history: list[tuple[str, str]]) -> tuple[str, list[tuple[str, str]]]:
