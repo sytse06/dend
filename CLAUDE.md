@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## What this is
 
-A single-file Gradio chatbot (`app.py`) that acts as a D&D 5e Dungeon Master, backed by the Mistral API. Deployed to a Hugging Face Space (`sytse06/dend`) via GitHub Actions on every push to `main`.
+A single-file Gradio chatbot (`app.py`) that acts as a D&D 5e Dungeon Master, backed by Google's Gemma 4 model via the OpenRouter API (OpenAI-compatible `chat.completions`). Deployed to a Hugging Face Space (`sytse06/dend`) via GitHub Actions on every push to `main`.
 
 ## Commands
 
@@ -24,7 +24,7 @@ No test suite or linter is configured.
 Everything lives in `app.py`:
 
 - `roll_dice(dice_type)` — validates against `{4,6,8,10,12,20,100}`, returns a random result as a string.
-- `get_dm_response(message, history)` — builds the Mistral message list (`system` + `history` + `user`), calls `client.chat.complete(model="mistral-medium-latest", ...)`, wrapped in a `logfire.span`.
+- `get_dm_response(message, history)` — builds the message list (`system` + `history` + `user`), calls `client.chat.completions.create(model="google/gemma-4-26b-a4b-it:free", ...)` against OpenRouter, wrapped in a `logfire.span`.
 - `respond(message, history)` — Gradio submit handler; appends user/assistant turns to `history` in messages format.
 - `gr.Blocks` UI — chat log + textbox on the left, dice-roller buttons on the right.
 
@@ -32,9 +32,10 @@ Chat history is `list[dict]` with `{"role", "content"}` keys throughout (Gradio 
 
 ## Key version constraints
 
-Pinned deliberately after debugging real breakage — don't bump without re-verifying against a real Mistral call and a real `demo.launch()`:
+Pinned deliberately after debugging real breakage — don't bump without re-verifying against a real API call and a real `demo.launch()`:
 
-- **`mistralai==2.7.2`** (via `>=1.0.0`): API is `from mistralai.client import Mistral`, `client.chat.complete(...)`. The old `MistralClient`/`ChatMessage` classes don't exist in this version. Model ID must be `mistral-medium-latest`, not `mistral-medium`.
+- **`openai>=1.0.0`**: used purely as a generic OpenAI-compatible HTTP client (`base_url="https://openrouter.ai/api/v1"`), not talking to OpenAI itself. `client.chat.completions.create(...)`, not the Mistral SDK's `chat.complete(...)`.
+- **`google/gemma-4-26b-a4b-it:free`**: OpenRouter's free-tier Gemma 4 MoE model ID (25.2B total/3.8B active params). Free tier is capped at 20 req/min and 50 req/day unless the account has ever bought $10+ in OpenRouter credits (permanent bump to 1000 req/day). The dense sibling `google/gemma-4-31b-it:free` is a one-line swap if quality matters more than latency.
 - **`gradio==6.20.0`**: `gr.Textbox` has no `show_copy_button` kwarg anymore — use `buttons=["copy"]`. `theme=` goes on `.launch()`, not `gr.Blocks()`.
 - **`python_version: "3.12"`** in `README.md` frontmatter must match the local venv's Python (currently Homebrew 3.12).
 
@@ -55,6 +56,6 @@ Push to `main` → GitHub Actions force-pushes to the HF Space's git remote over
 
 ## Environment variables (`.env`, see `.env.example`)
 
-- `MISTRAL_API_KEY` — required; `client` is `None` without it and `get_dm_response` returns an error string instead of raising.
-- `HF_TOKEN` — only needed for manual HF operations, not for the GitHub Actions deploy (that uses SSH).
+- `OPENROUTER_API_KEY` — required; `client` is `None` without it and `get_dm_response` returns an error string instead of raising.
+- `HF_TOKEN` — not required for the GitHub Actions deploy (that uses SSH) or for running `app.py` locally.
 - `LOGFIRE_TOKEN` — optional, no-op if unset.

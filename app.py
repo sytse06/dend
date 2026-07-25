@@ -3,7 +3,7 @@ import random
 import gradio as gr
 import logfire
 import spaces
-from mistralai.client import Mistral
+from openai import OpenAI
 
 logfire.configure(service_name="dnd-dm-assistant", send_to_logfire="if-token-present")
 logfire.instrument_httpx(capture_all=True)
@@ -19,11 +19,16 @@ def _zerogpu_startup_check() -> None:
 
 _zerogpu_startup_check()
 
-# Load Mistral API key from environment variable
-MISTRAL_API_KEY = os.environ.get("MISTRAL_API_KEY")
+# Load OpenRouter API key from environment variable
+OPENROUTER_API_KEY = os.environ.get("OPENROUTER_API_KEY")
+MODEL = "google/gemma-4-26b-a4b-it:free"
 
-# Initialize Mistral client only if API key is available
-client = Mistral(api_key=MISTRAL_API_KEY) if MISTRAL_API_KEY else None
+# Initialize OpenRouter client only if API key is available
+client = (
+    OpenAI(base_url="https://openrouter.ai/api/v1", api_key=OPENROUTER_API_KEY)
+    if OPENROUTER_API_KEY
+    else None
+)
 
 # System prompt for the D&D DM
 SYSTEM_PROMPT = """
@@ -49,23 +54,22 @@ def roll_dice(dice_type: str) -> str:
 
 
 def get_dm_response(message: str, history: list[dict]) -> str:
-    """Get a response from the Mistral DM."""
+    """Get a response from the DM via OpenRouter."""
     with logfire.span(
         "get_dm_response",
         message_length=len(message),
         history_turns=len(history),
     ):
         if client is None:
-            logfire.error("Mistral API key not configured")
-            return "Error: Mistral API key not configured. Set MISTRAL_API_KEY environment variable."
+            logfire.error("OpenRouter API key not configured")
+            return "Error: OpenRouter API key not configured. Set OPENROUTER_API_KEY environment variable."
 
         try:
-            # Gradio's messages format already matches Mistral's role/content shape
+            # Gradio's messages format already matches OpenRouter's role/content shape
             messages = [{"role": "system", "content": SYSTEM_PROMPT}, *history, {"role": "user", "content": message}]
 
-            # Get response from Mistral
-            response = client.chat.complete(
-                model="mistral-medium-latest",
+            response = client.chat.completions.create(
+                model=MODEL,
                 messages=messages,
                 temperature=0.7,
                 max_tokens=150,
@@ -73,8 +77,8 @@ def get_dm_response(message: str, history: list[dict]) -> str:
 
             return response.choices[0].message.content
         except Exception as e:
-            logfire.exception("Mistral request failed")
-            return f"Error: Failed to get response from Mistral. {str(e)}"
+            logfire.exception("OpenRouter request failed")
+            return f"Error: Failed to get response from OpenRouter. {str(e)}"
 
 
 def respond(message: str, history: list[dict]) -> tuple[str, list[dict]]:
